@@ -300,18 +300,62 @@ class Solver(object):
         self.restore_model(self.test_iters)
         data_loader = self.data_loader
         
+        # Specify the classes for which to generate images
+        target_classes = [2,3,6]  # Classes you want to generate images for
+        
         with torch.no_grad():
             for i, (x_real, c_org) in enumerate(data_loader):
                 x_real = x_real.to(self.device)
+                c_org = c_org.to(self.device)  # Ensure class labels are on the same device
+                
+                # Skip the batch if it does not contain source class images (e.g., class 5)
+                if (c_org != (7 - 1)).any():  # Adjust for zero-based indexing
+                    print(f"Skipping batch {i+1} because it does not contain source class images.")
+                    continue
+                
+                # Generate labels for target classes
                 c_trg_list = self.create_labels(c_org, self.c_dim)
 
-                # Translate images.
-                x_fake_list = [x_real]
-                for c_trg in c_trg_list:
-                    x_fake_list.append(self.G(x_real, c_trg))
+                # Iterate over target classes and generate images
+                for target_class in target_classes:
+                    # Generate labels for the target class
+                    c_trg = c_trg_list[target_class - 1]  # Adjust index since classes start from 1
+                    x_fake = self.G(x_real, c_trg)  # Generate fake image for the class
 
-                # Save the translated images.
-                x_concat = torch.cat(x_fake_list, dim=3)
-                result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i+1))
-                save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
-                print('Saved real and fake images into {}...'.format(result_path))
+                    # Save the generated fake images
+                    gen_folder = os.path.join(self.result_dir, f'gen{target_class}')
+                    os.makedirs(gen_folder, exist_ok=True)  # Create the folder if it doesn't exist
+                    gen_save_path = os.path.join(gen_folder, f'image_{i+1}_fake.jpg')
+                    save_image(self.denorm(x_fake.data.cpu()), gen_save_path, nrow=1, padding=0)
+                    print(f'Saved generated images for class {target_class} into {gen_save_path}...')
+
+                    # Concatenate the original and generated images for comparison
+                    x_concat = torch.cat([self.denorm(x_real), self.denorm(x_fake)], dim=3)  # Concatenate along width
+
+                    # Save the concatenated images for comparison
+                    comparison_folder = os.path.join(self.result_dir, f'comparison{target_class}')
+                    os.makedirs(comparison_folder, exist_ok=True)  # Create the folder if it doesn't exist
+                    comparison_save_path = os.path.join(comparison_folder, f'image_{i+1}_comparison.jpg')
+                    save_image(x_concat.data.cpu(), comparison_save_path, nrow=1, padding=0)
+                    print(f'Saved comparison images for class {target_class} into {comparison_save_path}...')
+    # def test(self):
+    #     """Translate images using StarGAN trained."""
+    #     # Load the trained generator.
+    #     self.restore_model(self.test_iters)
+    #     data_loader = self.data_loader
+        
+    #     with torch.no_grad():
+    #         for i, (x_real, c_org) in enumerate(data_loader):
+    #             x_real = x_real.to(self.device)
+    #             c_trg_list = self.create_labels(c_org, self.c_dim)
+
+    #             # Translate images.
+    #             x_fake_list = [x_real]
+    #             for c_trg in c_trg_list:
+    #                 x_fake_list.append(self.G(x_real, c_trg))
+
+    #             # Save the translated images.
+    #             x_concat = torch.cat(x_fake_list, dim=3)
+    #             result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i+1))
+    #             save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
+    #             print('Saved real and fake images into {}...'.format(result_path))                
