@@ -2,6 +2,8 @@
 To download the CelebA dataset:
 https://www.kaggle.com/datasets/msambare/fer2013
 https://www.kaggle.com/datasets/shuvoalok/raf-db-dataset
+generated dataset:
+https://www.kaggle.com/datasets/bchngo/generated-fer
 
 ## Training StarGAN networks
 
